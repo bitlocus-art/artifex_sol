@@ -9,7 +9,7 @@ import "@openzeppelin/contracts@v4.9.3/utils/Strings.sol";
 import "@openzeppelin/contracts@v4.9.3/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts@v4.9.3/token/ERC1155/IERC1155.sol";
 
-contract BitlocusArtifex is //0x51e70072096C0E81110633f574548428dDdD564f
+contract BitlocusArtifex is //0x3c4e09c2fd4dc0b095700e40d164eb2062357cf3
     ERC1155,
     Ownable 
 {
@@ -50,17 +50,17 @@ contract BitlocusArtifex is //0x51e70072096C0E81110633f574548428dDdD564f
         return BTLToken.balanceOf(address(this));
     }
 
-    // Official BTL Token address (BTL wormhole contract)
-    address _BTL_Token_address = 0x51e7B598C9155b9DCcB04Eb42519F6EeC9C841e9;
+    // Official BTL Token address (BTL wormhole contract ETHEREUM)
+    address _BTL_Token_address = 0x93e32efaFd24973d45f363A76D73ccB9Edf59986;
     IERC20 private BTLToken = IERC20(_BTL_Token_address); // The BTL Token Contract
 
-    uint256 public min_BTL_to_mint = 1000_000_000; // minimum BTL needed to mint an NFT: initially set to 1000 BTL  (BTL has 6 decimals)
+    uint256 public min_BTL_to_mint = 10000_000_000; // minimum BTL needed to mint an NFT: initially set to 10000 BTL  (BTL has 6 decimals)
 
     // minimum amount of time in blocks a newly minted
     // NFT will be staked before it can be burnt by the
     // owner and release the staked BTL
-    // = 182.5 days * 86400 / 3 seconds per block = 5256000 blocks
-    uint256 public TokenLockBlocks = 5_256_000; // starting at 6 months (cannot be increased, only reduced)
+    // = 182.5 days * 86400 / 12 seconds per block = 1314000 blocks
+    uint256 public TokenLockBlocks = 1_314_000; // starting at 6 months (cannot be increased, only reduced)
     // Store per token its lock period (that is, value of TokenLockBlocks at time of mint).
     mapping(uint256 => uint256) public TokenLockBlocks_Token;
 
@@ -100,9 +100,15 @@ contract BitlocusArtifex is //0x51e70072096C0E81110633f574548428dDdD564f
     function _adminSetContractLive() public onlyOwner {
         _ContractIsLive = true;
     }
+
+    // set the contract to pause, for maintenance or as needed. Note that this does not impact any 
+    // existing NFT's, only the creation of new ones.
+    function _adminPauseContract() public onlyOwner {
+        _ContractIsLive = false;
+    }
     
 
-    uint256 public _SecondsPerBlock = 3; // keep "speed" adjustable in case it ever changes
+    uint256 public _SecondsPerBlock = 12; // keep "speed" adjustable in case it ever changes
 
     function _adminSetSecondsPerBlock(uint256 p_sec) public onlyOwner {
         _SecondsPerBlock = p_sec;
@@ -146,6 +152,15 @@ contract BitlocusArtifex is //0x51e70072096C0E81110633f574548428dDdD564f
             "insuf auth BTL"
         );
         BTLStakingRewardPool += p_amount; // add to available staking reward pool
+    }
+
+    // Removal function of staking rewards. This can only be done if the contract is not enabled.
+
+    function _adminRemoveStakingRewards(uint256 _amount) public onlyOwner {
+        require(!_ContractIsLive,"cannot remove reward pool from live contract.");
+        require(_amount<=BTLStakingRewardPool,"insufficiant reward pool size");
+        require(BTLToken.transfer(msg.sender, _amount));
+        BTLStakingRewardPool -= _amount; // add to available staking reward pool
     }
 
     constructor(
